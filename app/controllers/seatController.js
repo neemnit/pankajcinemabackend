@@ -3,7 +3,7 @@ const MovieModel = require("../models/movieModel");
 const SeatModel = require("../models/seatModel");
 const UserModel = require("../models/UserSignup")
 
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+const stripe = require('stripe')("sk_test_51OhulWSDztXzlF8YS9owbYwg7BmNo35Vv48DgmhUkjWyMn0HNrTwYza3KHwfyQcMPWZUZEUkChb73FeR761Hkdjm00DqhuoZAw");
 let tempStore = {}
 
 // Function to generate a unique session ID
