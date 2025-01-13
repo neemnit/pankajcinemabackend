@@ -8,8 +8,8 @@ const configureDB = require('./config/database');
 
 const router=require('./config/router')
 app.use(cors({
-    origin:'https://pankajcinemabackend-2.onrender.com/payment','*'
-    methods: ['GET', 'POST'],
+    origin:'*',
+    methods: ['GET', 'POST','DELETE','PUT'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 // Mongo DB Connections
