@@ -2,7 +2,7 @@ const express = require('express');
 require('dotenv').config()
 const app = express();
 const cors = require('cors');
- const stripe=require('stripe')(process.env.STRIPE_SECRET_KEY)
+
 const mongoose = require('mongoose');
 const configureDB = require('./config/database');
 
