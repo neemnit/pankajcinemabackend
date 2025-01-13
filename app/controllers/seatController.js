@@ -1,6 +1,7 @@
 const MovieModel = require("../models/movieModel");
 const SeatModel = require("../models/seatModel");
 const UserModel = require("../models/UserSignup")
+require('dotenv').config()
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 let tempStore = {}
 
