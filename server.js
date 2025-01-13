@@ -7,7 +7,11 @@ const mongoose = require('mongoose');
 const configureDB = require('./config/database');
 
 const router=require('./config/router')
-app.use(cors({ origin: "*" }));
+app.use(cors({
+    origin:'https://pankajcinemabackend-2.onrender.com/payment',
+    methods: ['GET', 'POST'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
 // Mongo DB Connections
 configureDB()
 
