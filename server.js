@@ -7,7 +7,7 @@ const mongoose = require('mongoose');
 const configureDB = require('./config/database');
 
 const router=require('./config/router')
-app.use(cors())
+app.use(cors({ origin: "*" }));
 // Mongo DB Connections
 configureDB()
 
