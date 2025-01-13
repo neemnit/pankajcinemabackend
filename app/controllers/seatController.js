@@ -97,7 +97,7 @@ const seatController = {
 
         ],
         mode: 'payment',
-        success_url: `http://localhost:3000/success?session_id={CHECKOUT_SESSION_ID}&user_data=${sessionId}`, // Correcting the success URL
+        success_url: `https://pankajcinemafrontend.vercel.app/success?session_id={CHECKOUT_SESSION_ID}&user_data=${sessionId}`, // Correcting the success URL
         cancel_url: `http://localhost:5173/cancel`, // Redirect to cancel page
         billing_address_collection: 'required',
 
