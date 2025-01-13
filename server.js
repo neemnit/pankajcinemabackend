@@ -8,9 +8,7 @@ const configureDB = require('./config/database');
 
 const router=require('./config/router')
 app.use(cors({
-    origin:'*',
-    methods: ['GET', 'POST','DELETE','PUT'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+    origin:'*'
 }));
 // Mongo DB Connections
 configureDB()
