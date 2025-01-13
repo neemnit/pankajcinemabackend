@@ -8,7 +8,7 @@ const configureDB = require('./config/database');
 
 const router=require('./config/router')
 app.use(cors({
-    origin:'https://pankajcinemabackend-2.onrender.com/payment','*',
+    origin:'https://pankajcinemabackend-2.onrender.com/payment','*'
     methods: ['GET', 'POST'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
