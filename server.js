@@ -10,7 +10,7 @@ const router=require('./config/router')
 app.use(cors())
 app.use(
     cors({
-      origin: 'http://localhost:3000', // Allow requests from this origin
+      origin: 'https://pankajcinemafrontend.vercel.app', // Allow requests from this origin
       methods: 'GET,POST,PUT,DELETE',  // Allow specific HTTP methods
       credentials: true,               // Allow cookies and credentials
     })

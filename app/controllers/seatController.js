@@ -92,8 +92,8 @@ const seatController = {
           },
         ],
         mode: 'payment',
-        success_url: `http://localhost:3000/success?session_id={CHECKOUT_SESSION_ID}&user_data=${sessionId}`, // Correcting the success URL
-        cancel_url: `http://localhost:3000/cancel`, // Redirect to cancel page
+        success_url: `https://pankajcinemafrontend.vercel.app/success?session_id={CHECKOUT_SESSION_ID}&user_data=${sessionId}`, // Correcting the success URL
+        cancel_url: `https://pankajcinemafrontend.vercel.app/cancel`, // Redirect to cancel page
         billing_address_collection: 'required',
       });
 
