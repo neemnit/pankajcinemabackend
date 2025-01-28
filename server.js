@@ -3,13 +3,18 @@ require('dotenv').config()
 const app = express();
 const cors = require('cors');
 
-const mongoose = require('mongoose');
+
 const configureDB = require('./config/database');
 
 const router=require('./config/router')
-app.use(cors({
-    origin:'*'
-}));
+app.use(cors())
+app.use(
+    cors({
+      origin: 'http://localhost:3000', // Allow requests from this origin
+      methods: 'GET,POST,PUT,DELETE',  // Allow specific HTTP methods
+      credentials: true,               // Allow cookies and credentials
+    })
+  );
 // Mongo DB Connections
 configureDB()
 

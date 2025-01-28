@@ -1,15 +1,16 @@
-require('dotenv').config()
+require('dotenv').config();
 const MovieModel = require("../models/movieModel");
 const SeatModel = require("../models/seatModel");
-const UserModel = require("../models/UserSignup")
+const UserModel = require("../models/UserSignup");
 
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-let tempStore = {}
+let tempStore = {};
 
 // Function to generate a unique session ID
 const generateSessionId = () => {
   return Math.random().toString(36).substr(2, 9) + Date.now();
-}
+};
+
 const seatController = {
 
   bookSeat: async (req, res) => {
@@ -23,6 +24,7 @@ const seatController = {
       res.json(error);
     }
   },
+
   getSeats: async (req, res) => {
     try {
       const seats = await SeatModel.find();
@@ -32,13 +34,11 @@ const seatController = {
     }
   },
 
-
-
   // Route for payment processing
   payment: async (req, res) => {
-
     try {
       const seatData = req.body;
+      
 
       const { showDate, showTime, totalSeats, isFull, movieId, seats, numSeatsBooked } = req.body;
 
@@ -49,18 +49,15 @@ const seatController = {
         });
       }
 
-
       // Storing user data in the temporary store using a unique session ID
       const sessionId = generateSessionId();
       tempStore[sessionId] = seatData;
-      const movieName = await MovieModel.findById(movieId)
+      const movieName = await MovieModel.findById(movieId);
 
-      const userName = await UserModel.findById(numSeatsBooked[0]?.userId)
+      const userName = await UserModel.findById(numSeatsBooked[0]?.userId);
       // Create a Stripe product
-
       const product = await stripe.products.create({
         name: userName?.name,
-
       });
 
       // Create a Stripe price for the product
@@ -69,6 +66,7 @@ const seatController = {
         unit_amount: 100 * 100, // 100 INR
         currency: 'inr',
       });
+
       const formattedDate = new Date(showDate).toLocaleDateString('en-IN', {
         weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
       });
@@ -87,32 +85,26 @@ const seatController = {
                   .join(', ')} | Tickets: ${seatData?.seats.length} | 
                             Date: ${formattedDate} | Time: ${showTime}`,
                 images: [`${movieName?.image?.url}`],
-
-
               },
-
               unit_amount: (seatData?.seats[0]?.price * seatData?.seats.length) * 100, // Price in smallest currency unit
             },
-            // quantity: seatData?.seats.length,
-
+            quantity: seatData?.seats.length, // Add quantity here
           },
-
         ],
         mode: 'payment',
-        success_url: `https://pankajcinemafrontend.vercel.app/success?session_id={CHECKOUT_SESSION_ID}&user_data=${sessionId}`, // Correcting the success URL
-        cancel_url: `https://pankajcinemafrontend.vercel.app/cancel`, // Redirect to cancel page
+        success_url: `http://localhost:3000/success?session_id={CHECKOUT_SESSION_ID}&user_data=${sessionId}`, // Correcting the success URL
+        cancel_url: `http://localhost:3000/cancel`, // Redirect to cancel page
         billing_address_collection: 'required',
-
       });
 
       // Send session URL to the frontend
       res.status(200).json({ url: session.url });
     } catch (error) {
-
+      
       res.status(500).json({ error: 'Internal Server Error' });
     }
-
   },
+
   success: async (req, res) => {
     try {
       const { session_id, user_data } = req.query; // Extract session_id and user_data from query parameters
@@ -132,9 +124,6 @@ const seatController = {
       const session = await stripe.checkout.sessions.retrieve(session_id);
 
       // Perform backend updates, e.g., update seat availability and user details
-
-
-      // Save user data in the database
       let { showDate, showTime, totalSeats, isFull, movieId, seats, numSeatsBooked } = userData;
       totalSeats = Number(totalSeats);
 
@@ -163,8 +152,6 @@ const seatController = {
             },
           }
         );
-
-
 
         // Fetch the updated data
         updatedSeatData = await SeatModel.findById(existingSeatData._id);
@@ -197,7 +184,7 @@ const seatController = {
           { new: true } // Returns the updated document
         );
       }
-      updatedSeatData.movieId = movie
+      updatedSeatData.movieId = movie;
 
       return res.status(200).json({
         message: 'Payment successful',
@@ -205,45 +192,9 @@ const seatController = {
         sessionDetails: session, // Optionally, send the session details
       });
     } catch (error) {
-
       res.status(500).json({ error: 'Internal Server Error' });
     }
   },
+};
 
-}
 module.exports = seatController;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
