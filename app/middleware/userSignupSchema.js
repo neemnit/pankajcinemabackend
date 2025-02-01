@@ -7,7 +7,7 @@ const userSignupSchema = yup.object().shape({
         .string()
         .required('Please fill your name correctly')
         .min(3, 'Name should be more than 2 characters')
-        .max(17, 'Name should not be more than 17 characters')
+        .max(20, 'Name should not be more than 20 characters')
         .matches(/^(?!.*([a-zA-Z])\1{2})[a-zA-Z]+$/, 'Please enter a valid name'),
 
     email: yup

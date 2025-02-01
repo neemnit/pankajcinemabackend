@@ -1,5 +1,6 @@
 const fs = require("fs"); // For file cleanup
 const MovieModel = require("../models/movieModel"); // Import your Mongoose model
+const SeatModel=require('../models/seatModel')
 const cloudinary = require("cloudinary").v2;
 const movieController = {
   addMovie: async (req, res) => {
@@ -64,6 +65,8 @@ const movieController = {
     try {
       const id = req.params.id;
       const data = await MovieModel.findByIdAndDelete(id);
+       await SeatModel.findOneAndDelete({movieId:id})
+      
       return res.status(202).json({ data, message: "Deleted Sucessfully" });
     } catch (error) {
       return res.status(404).json({ error: "No movies exist" });

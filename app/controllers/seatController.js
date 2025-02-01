@@ -15,14 +15,24 @@ const seatController = {
 
   bookSeat: async (req, res) => {
     try {
+      // Validate if seat already exists for the same row and seat number
+      const existingSeat = await SeatModel.findOne({
+        "seats.row": req.body.row,
+        "seats.seatNumber": req.body.seatNumber,
+      });
+      if (existingSeat) {
+        return res.status(400).json({ message: "Seat is already booked or exists." });
+      }
+  
       const data = new SeatModel(req.body);
       const error = data.validateSync();
-      if (error) return res.status(404).json(error?.errors);
+      if (error) return res.status(400).json(error?.errors);
+  
       const bookedSeat = await data.save();
       return res.status(201).json({ bookedSeat, message: "Seat is reserved" });
     } catch (error) {
-      res.json(error);
-    }
+      res.status(500).json({ message: "Internal Server Error", error });
+    } 
   },
 
   getSeats: async (req, res) => {
@@ -40,7 +50,7 @@ const seatController = {
       const seatData = req.body;
       
 
-      const { showDate, showTime, totalSeats, isFull, movieId, seats, numSeatsBooked } = req.body;
+      const { showDate, showTime, totalSeats,  movieId,  numSeatsBooked } = req.body;
 
       // Validate the input data
       if (!showDate || !showTime || !totalSeats || !movieId) {
@@ -83,19 +93,20 @@ const seatController = {
                 description: `Seat Numbers: ${seatData?.seats
                   ?.map((seat) => seat?.row + " " + seat?.seatNumber)
                   .join(', ')} | Tickets: ${seatData?.seats.length} | 
-                            Date: ${formattedDate} | Time: ${showTime}`,
+                              Date: ${formattedDate} | Time: ${showTime}`,
                 images: [`${movieName?.image?.url}`],
               },
-              unit_amount: (seatData?.seats[0]?.price * seatData?.seats.length) * 100, // Price in smallest currency unit
+              unit_amount: seatData?.seats[0]?.price * 100, // Corrected: Only per ticket price
             },
-            quantity: seatData?.seats.length, // Add quantity here
+            quantity: seatData?.seats.length, // Stripe will multiply by this quantity
           },
         ],
         mode: 'payment',
-        success_url: `https://pankajcinemafrontend.vercel.app/success?session_id={CHECKOUT_SESSION_ID}&user_data=${sessionId}`, // Correcting the success URL
+        success_url: `https://pankajcinemabackend.onrender.com/success?session_id={CHECKOUT_SESSION_ID}&user_data=${sessionId}`, // Correcting the success URL
         cancel_url: `https://pankajcinemafrontend.vercel.app/cancel`, // Redirect to cancel page
         billing_address_collection: 'required',
       });
+      
 
       // Send session URL to the frontend
       res.status(200).json({ url: session.url });
@@ -104,97 +115,110 @@ const seatController = {
       res.status(500).json({ error: 'Internal Server Error' });
     }
   },
+  getBooking:async(req,res)=>{
+    const { session_id,user_data } = req.query;
+    const seatData = tempStore[user_data];
+    res.json(seatData)
+  },
 
   success: async (req, res) => {
     try {
-      const { session_id, user_data } = req.query; // Extract session_id and user_data from query parameters
-
+      const { session_id, user_data } = req.query;
+  
       if (!session_id || !user_data) {
         return res.status(400).json({ error: 'Session ID or user data is missing' });
       }
-
-      // Retrieve user data from the temporary store using sessionId
+  
+      // Retrieve user data from the temporary store
       const userData = tempStore[user_data];
-
+  
       if (!userData) {
         return res.status(404).json({ error: 'User data not found' });
       }
-
+  
       // Retrieve the Stripe session details
       const session = await stripe.checkout.sessions.retrieve(session_id);
-
-      // Perform backend updates, e.g., update seat availability and user details
-      let { showDate, showTime, totalSeats, isFull, movieId, seats, numSeatsBooked } = userData;
-      totalSeats = Number(totalSeats);
-
+  
+      let { showDate, showTime, totalSeats, movieId, seats, numSeatsBooked } = userData;
+      
+  let frontResponse={}
+  frontResponse.userData=userData
       // Adjust totalSeats
-      totalSeats = totalSeats - seats.length;
-
+      const seatsBooked = seats.length;
+      totalSeats -= seatsBooked; // Update locally
+  
+      
+  
+      // Mark seats as booked
       seats.forEach((seat) => {
         seat.isBooked = true;
       });
-
-      const existingSeatData = await SeatModel.findOne({ showDate, showTime, movieId });
-      let updatedSeatData;
-
+  
+      // Find existing seat data
+      let existingSeatData = await SeatModel.findOne({ showDate, showTime, movieId });
+      
       if (existingSeatData) {
-        // Push the new seats into the existing seat array (adding to the existing seats)
+        // Update totalSeats and add new seats
         await SeatModel.updateOne(
-          { _id: existingSeatData._id }, // Find the specific document by its _id
+          { _id: existingSeatData._id },
           {
-            $set: {
-              totalSeats: totalSeats,
-              isFull: isFull,
-            },
+            $inc: { totalSeats: -seatsBooked }, // Decrease totalSeats dynamically
+            $set: { isFull: existingSeatData.totalSeats - seatsBooked === 0 }, // Update isFull if seats are exhausted
             $push: {
               seats: { $each: seats },
-              numSeatsBooked: { $each: numSeatsBooked }, // Add new seats to the existing seats array
+              numSeatsBooked: { $each: numSeatsBooked },
             },
           }
         );
-
-        // Fetch the updated data
-        updatedSeatData = await SeatModel.findById(existingSeatData._id);
+  
+        // Fetch the updated document
+        existingSeatData = await SeatModel.findById(existingSeatData._id);
       } else {
-        // Create new seat data
-        const newSeatData = new SeatModel(userData);
-        updatedSeatData = await newSeatData.save();
+        // Create new seat data if it doesn’t exist
+        const newSeatData = new SeatModel({
+          ...userData,
+          totalSeats: 100 - seatsBooked, // Ensure correct totalSeats
+          isFull: 100 - seatsBooked === 0,
+        });
+  
+        existingSeatData = await newSeatData.save();
       }
-
-      // Update user bookingDetails field
+  
+      // Update user booking details
       const movie = await MovieModel.findById(movieId);
       if (movie) {
         const movieName = movie.name;
         await UserModel.findByIdAndUpdate(
-          numSeatsBooked[0]?.userId, // Ensure this is a valid user ID
+          numSeatsBooked[0]?.userId,
           {
             $push: {
               bookingDetails: {
                 date: showDate,
-                showTime: showTime,
-                tickets: seats.length, // Number of seats booked
-                movieName: movieName, // Movie name
+                showTime,
+                tickets: seatsBooked,
+                movieName,
                 seatNumber: seats.map(seat => ({
                   row: seat.row,
                   number: seat.seatNumber,
-                })), // Mapping the seat details into an array of objects
+                })),
               },
             },
           },
-          { new: true } // Returns the updated document
+          { new: true }
         );
       }
-      updatedSeatData.movieId = movie;
-
-      return res.status(200).json({
-        message: 'Payment successful',
-        seatData: updatedSeatData, // Send the updated or new seat data
-        sessionDetails: session, // Optionally, send the session details
-      });
+  
+      
+      frontResponse.movieId=movie
+      tempStore[user_data] = frontResponse;
+  
+      return res.redirect(`https://pankajcinemafrontend.vercel.app/success?session_id=${session_id}&user_data=${user_data}`);
     } catch (error) {
+      
       res.status(500).json({ error: 'Internal Server Error' });
     }
-  },
+  }
+  
 };
 
 module.exports = seatController;

@@ -18,4 +18,5 @@ router.get('/getMovies',Authenticate,movieController.getMovies)
 router.post('/profile',Authenticate,userRegisterContoller.profile)
 router.post('/payment',Authenticate,    seatController.payment)
 router.get('/success',seatController.success)
+router.get('/getBooking',seatController.getBooking)
 module.exports=router

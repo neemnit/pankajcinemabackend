@@ -5,7 +5,7 @@ const UserSignupSchema = new mongoose.Schema(
     name: {
       type: String,
       minlength: [3, "Name should be more than 2 characters"],
-      maxlength: [17, "Name should not be more than 17 characters"],
+      maxlength: [20, "Name should not be more than 20 characters"],
       required: [true, "Please fill your name correctly"],
       trim: true,
       match: [
