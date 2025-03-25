@@ -47,58 +47,65 @@ const seatController = {
   // Route for payment processing
   payment: async (req, res) => {
     try {
-      const seatData = req.body;
-      
-
-      const { showDate, showTime, totalSeats,  movieId,  numSeatsBooked } = req.body;
-
+      const { showDate, showTime, totalSeats, movieId, numSeatsBooked, seats } = req.body;
+  
       // Validate the input data
-      if (!showDate || !showTime || !totalSeats || !movieId) {
+      if (!showDate || !showTime || !totalSeats || !movieId || !seats?.length) {
         return res.status(400).json({
-          error: "Invalid request data. Please provide movieName, seatNumber, price, and imageUrl.",
+          error: "Invalid request data. Please provide movieId, show details, and seat information.",
         });
       }
-
-      // Storing user data in the temporary store using a unique session ID
+  
+      // Generate a unique session ID and store user data temporarily
       const sessionId = generateSessionId();
-      tempStore[sessionId] = seatData;
-      const movieName = await MovieModel.findById(movieId);
-
-      const userName = await UserModel.findById(numSeatsBooked[0]?.userId);
+      tempStore[sessionId] = req.body;
+  
+      // Fetch movie and user details
+      const [movie, user] = await Promise.all([
+        MovieModel.findById(movieId),
+        UserModel.findById(numSeatsBooked[0]?.userId),
+      ]);
+  
       // Create a Stripe product
-      const product = await stripe.products.create({
-        name: userName?.name,
-      });
-
+      const product = await stripe.products.create({ name: user?.name });
+  
       // Create a Stripe price for the product
       const price = await stripe.prices.create({
         product: product.id,
         unit_amount: 100 * 100, // 100 INR
-        currency: 'inr',
+        currency: "inr",
       });
-
-      const formattedDate = new Date(showDate).toLocaleDateString('en-IN', {
-        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+  
+      // Format the show date
+      const formattedDate = new Date(showDate).toLocaleDateString("en-IN", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
       });
-
+      const customer = await stripe.customers.create({
+        name: user?.name, // Prefill cardholder name
+        email: user?.email || "neemnit@gmail.com",
+      });
+      
       // Create a Stripe checkout session
       const session = await stripe.checkout.sessions.create({
-        payment_method_types: ['card'],
+        payment_method_types: ["card"],
+        customer:customer.id, // Use user email or default email
         line_items: [
           {
             price_data: {
-              currency: 'inr',
+              currency: "inr",
               product_data: {
-                name: `Movie: ${movieName?.name}`,
-                description: `Seat Numbers: ${seatData?.seats
-                  ?.map((seat) => seat?.row + " " + seat?.seatNumber)
-                  .join(', ')} | Tickets: ${seatData?.seats.length} | 
-                              Date: ${formattedDate} | Time: ${showTime}`,
-                images: [`${movieName?.image?.url}`],
+                name: `Movie: ${movie?.name}`,
+                description: `Seat Numbers: ${seats
+                  .map((seat) => `${seat.row} ${seat.seatNumber}`)
+                  .join(", ")} | Tickets: ${seats.length} | Date: ${formattedDate} | Time: ${showTime}`,
+                images: [movie?.image?.url || ""], // Handle case where no image exists
               },
-              unit_amount: seatData?.seats[0]?.price * 100, // Corrected: Only per ticket price
+              unit_amount: seats[0]?.price * 100, // Price per ticket
             },
-            quantity: seatData?.seats.length, // Stripe will multiply by this quantity
+            quantity: seats.length,
           },
         ],
         mode: 'payment',
@@ -106,13 +113,11 @@ const seatController = {
         cancel_url: `https://pankajcinemafrontend.vercel.app/cancel`, // Redirect to cancel page
         billing_address_collection: 'required',
       });
-      
-
-      // Send session URL to the frontend
+  
       res.status(200).json({ url: session.url });
     } catch (error) {
-      
-      res.status(500).json({ error: 'Internal Server Error' });
+      console.error("Payment error:", error);
+      res.status(500).json({ error: "Internal Server Error" });
     }
   },
   getBooking:async(req,res)=>{
@@ -131,6 +136,7 @@ const seatController = {
   
       // Retrieve user data from the temporary store
       const userData = tempStore[user_data];
+      
   
       if (!userData) {
         return res.status(404).json({ error: 'User data not found' });
