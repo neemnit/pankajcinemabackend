@@ -74,8 +74,17 @@ const movieController = {
   },
   getMovies:async(req,res)=>{
     try{
-      const movieList=await MovieModel.find()
-      return res.status(200).json(movieList)
+      await MovieModel.deleteMany({
+        releaseDate: { $lte: new Date() }
+      });
+  
+      // Fetch remaining movies (future releases only)
+      const movieList = await MovieModel.find({
+        releaseDate: { $gt: new Date() }
+      });
+  
+      console.log(movieList.length);
+      return res.status(200).json(movieList);
     }
     catch(err){
       return res.status(404).json({error:"No movie added",err})
